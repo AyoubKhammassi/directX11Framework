@@ -39,6 +39,8 @@ HINSTANCE Window::WindowClass::GetInstance() noexcept
 //Window Stuff
 
 Window::Window(int width, int height, const char* name) noexcept
+	:
+	width(width),height(height)
 {
 	//calculate the window size based on the desired client region
 	RECT wr;
@@ -70,6 +72,24 @@ Window::Window(int width, int height, const char* name) noexcept
 Window::~Window()
 {
 	DestroyWindow(hWnd);
+}
+
+std::optional<int> Window::ProcessMessages()
+{
+	MSG msg;
+	//While queue has messages, remove and dispatch them (but do not blcok
+	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+	{
+		if (msg.message == WM_QUIT)
+		{
+			return msg.wParam;
+		}
+
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	//return an empty optional when not quitting app
+	return {};
 }
 
 LRESULT WINAPI Window::HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
@@ -129,47 +149,65 @@ LRESULT Window::HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noe
 	case WM_MOUSEMOVE:
 	{
 		POINTS pt = MAKEPOINTS(lParam);
-		mouse.OnMouseMove(pt.x, pt.y);
+		//check if mouse is inside client region, log a move event + capture mouse
+		if (pt.x >= 0 && pt.x < width && pt.y >= 0 && pt.y < height)
+		{
+			mouse.OnMouseMove(pt.x, pt.y);
+			if (!mouse.IsInWindow())
+			{
+				//keep getting mouse messages even if it's outside the window
+				SetCapture(hWnd);
+				mouse.OnMouseEnter();
+			}
+		}
+		else
+		{
+			if (wParam & MK_RBUTTON | MK_LBUTTON)
+			{
+				mouse.OnMouseMove(pt.x, pt.y);
+			}
+			else
+				//outside of the window, and not clicking neither R or L mouse buttons
+			{
+				ReleaseCapture();
+				mouse.OnMouseLeave();
+			}
+		}
+		break;
 	}
 	case WM_LBUTTONDOWN:
 	{
 		POINTS pt = MAKEPOINTS(lParam);
 		mouse.OnLeftPressed(pt.x, pt.y);
+		break;
 	}
 	case WM_RBUTTONDOWN:
 	{
 		POINTS pt = MAKEPOINTS(lParam);
 		mouse.OnRightPressed(pt.x, pt.y);
+		break;
 	}
 	case WM_LBUTTONUP:
 	{
 		POINTS pt = MAKEPOINTS(lParam);
 		mouse.OnLeftReleased(pt.x, pt.y);
+		break;
 	}
 	case WM_RBUTTONUP:
 	{
 		POINTS pt = MAKEPOINTS(lParam);
 		mouse.OnRightReleased(pt.x, pt.y);
+		break;
 	}
 	case WM_MOUSEWHEEL:
 	{
 		const POINTS pt = MAKEPOINTS(lParam);
-		if (GET_WHEEL_DELTA_WPARAM(wParam) > 0)
-		{
-			mouse.OnWheelUp(pt.x, pt.y);
-		}
-		if (GET_WHEEL_DELTA_WPARAM(wParam) < 0)
-		{
-			mouse.OnWheelDown(pt.x, pt.y);
-		}
+		const int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+		mouse.OnWheelDelta(pt.x, pt.y, delta);
+		break;
 		//END MOUSE MESSAGES
 	}
-		
-
 	}
-
-
-
 	return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
