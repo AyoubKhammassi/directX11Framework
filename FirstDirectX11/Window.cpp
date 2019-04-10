@@ -64,8 +64,10 @@ Window::Window(int width, int height, const char* name) noexcept
 		throw LAST_DXEXPT();
 	}
 
-	//Show window
+	//newly created window starts as hidden so we need to show it
 	ShowWindow(hWnd, SW_SHOWDEFAULT);
+	//creating the graphiics for the window
+	pGraphics = std::make_unique<Graphics>(hWnd);
 }
 
 
@@ -92,7 +94,12 @@ std::optional<int> Window::ProcessMessages()
 	return {};
 }
 
-LRESULT WINAPI Window::HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
+Graphics& Window::getGraphicsPointer()
+{
+		return *pGraphics;
+}
+
+LRESULT CALLBACK Window::HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 {
 	//WM_NCCREATE is message sent prior to window creation, the additional parameters used in the createWindow() method
 	//are stored in a field (lpCreateParams) in a struct (CREATESTRUCTW) that is passed in the lParam
@@ -110,7 +117,7 @@ LRESULT WINAPI Window::HandleMsgSetup(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
 	return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-LRESULT WINAPI Window::HandleMsgThunk(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
+LRESULT CALLBACK Window::HandleMsgThunk(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 {
 	//retrieve ptr to window class
 	Window* const pWnd = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));

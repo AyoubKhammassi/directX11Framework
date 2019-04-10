@@ -3,7 +3,9 @@
 #include "DXException.h"
 #include "Keyboard.h"
 #include "Mouse.h"
+#include "Graphics.h"
 #include <optional>
+#include <memory>
 
 class Window
 {
@@ -48,6 +50,8 @@ public:
 	//settitle here if u ever need it
 
 	static std::optional<int> ProcessMessages();
+	Graphics& getGraphicsPointer();
+
 
 
 private:
@@ -62,6 +66,8 @@ private:
 public:
 	Keyboard keyboard;
 	Mouse mouse;
+private:
+	std::unique_ptr<Graphics> pGraphics;
 };
 
 

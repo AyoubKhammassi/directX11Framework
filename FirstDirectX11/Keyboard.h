@@ -90,8 +90,8 @@ private:
 template<typename T>
 inline void Keyboard::TrimBuffer(std::queue<T>& buffer) noexcept
 {
-	while (buffer->size() > bufferSize)
+	while (buffer.size() > bufferSize)
 	{
-		buffer->pop();
+		buffer.pop();
 	}
 }

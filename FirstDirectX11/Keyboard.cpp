@@ -2,9 +2,6 @@
 
 
 
-Keyboard::Keyboard()
-{
-}
 
 bool Keyboard::KeyIsPressed(unsigned char keycode) const noexcept
 {

@@ -21,3 +21,8 @@ int App::Go()
 	
 }
 
+void App::DoFrame()
+{
+	wnd.getGraphicsPointer().EndFrame();
+}
+
