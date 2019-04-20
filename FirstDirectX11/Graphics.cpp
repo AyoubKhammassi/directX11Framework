@@ -21,25 +21,29 @@ Graphics::Graphics(HWND hWnd)
 	
 	//4xMSAA config, no antialiasing 1 and 0
 	sd.SampleDesc.Count = 1;
-	sd.SampleDesc.Count = 0;
+	sd.SampleDesc.Quality = 0;
 
 	//number of back buffers used in the swap chain
 	sd.BufferCount = 1;
-	sd.BufferUsage = DXGI_USAGE_BACK_BUFFER;
+	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 
 	//the client window that will display the frames
 	sd.OutputWindow = hWnd;
-	sd.Windowed = true;
+	sd.Windowed = TRUE;
 
 	//the swap effect used in the presentation of the frame, this one is the most used, the vanilla basically
 	sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 	//no flags for now
 	sd.Flags = 0;
 
-	if (FAILED(D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION, &sd, &pSwap, &pDevice, nullptr, &pContext)))
-	{
-		
-	}
+	D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION, &sd, &pSwap, &pDevice, nullptr, &pContext);
+
+	//gain access to texture subresourcs in swap chain
+	ID3D11Resource* pBackBuffer = nullptr;
+	pSwap->GetBuffer(0, __uuidof(ID3D11Resource), reinterpret_cast<void**>(&pBackBuffer));
+	pDevice->CreateRenderTargetView(pBackBuffer, nullptr, &pTargetView);
+	pBackBuffer->Release();
+
 }
 
 void Graphics::EndFrame()
@@ -48,8 +52,17 @@ void Graphics::EndFrame()
 		pSwap->Present(1u, 0u);
 }
 
+void Graphics::ClearBuffer(float r, float g, float b) noexcept
+{
+	const float color[] = { r,g,b,1.0f };
+	pContext->ClearRenderTargetView(pTargetView, color);
+
+}
+
 Graphics::~Graphics()
 {
+	if (pTargetView != nullptr)
+		pTargetView->Release();
 	if (pSwap != nullptr)
 		pSwap->Release();
 	if (pContext != nullptr)
