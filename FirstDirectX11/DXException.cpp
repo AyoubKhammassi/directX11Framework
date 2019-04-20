@@ -36,7 +36,6 @@ std::string DXException::GetOriginString() const noexcept
 	std::ostringstream oss;
 	oss << "[File] " << file << std::endl
 	<< "[Line] " << line;
-
 	return oss.str();
 }
 
