@@ -6,26 +6,36 @@
 #include "Graphics.h"
 #include <optional>
 #include <memory>
+#include "DXException.h"
 
 class Window
 {
-	//exception calss
+	//exception class
 public:
-	class Exception : DXException
+	class Exception : public DXException
 	{
 	public:
-		Exception(int line, const char* file, HRESULT hr) noexcept;
-		const char* what() const noexcept override;
-		virtual const char* GetType() const noexcept;
+		using DXException::DXException;
 		static std::string TranslateErrorCode(HRESULT hr) noexcept;
-		HRESULT GetErrorCode() const noexcept;
+	};
+	class HrException : public Exception
+	{
+	public:
+		HrException(int line, const char* file, HRESULT hr) noexcept;
+		const char* what() const noexcept override;
+		const char* GetType() const noexcept override;
 		std::string GetErrorString() const noexcept;
-
+		HRESULT GetErrorCode() const noexcept;
+		std::string GetErrorDescription() const noexcept;
 	private:
 		HRESULT hr;
 	};
-
-
+	class NoGraphicsException : public Exception
+	{
+	public:
+		using Exception::Exception;
+		const char* GetType() const noexcept override;
+	};
 private:
 	//singeton class for registering and unregistering the window class
 	class WindowClass
@@ -71,6 +81,7 @@ private:
 };
 
 
-//error exception helper macro
-#define DXEXPT(hr) Window::Exception(__LINE__,__FILE__, hr)
-#define LAST_DXEXPT(hr) Window::Exception(__LINE__,__FILE__, GetLastError())
+//error exception helper macros
+#define DXEXPT(hr) Window::HrException::HrException(__LINE__,__FILE__,hr)
+#define LAST_DXEXPT() Window::HrException::HrException(__LINE__,__FILE__, GetLastError())
+#define WND_NOGRAPHICS_EXCEPT() Window::NoGraphicsException(__LINE__,__FILE__)
