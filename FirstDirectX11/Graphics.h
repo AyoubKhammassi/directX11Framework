@@ -4,6 +4,9 @@
 #include <d3d11.h>
 #include <vector>
 #include "DXGIInfoManager.h"
+#include <wrl.h>
+
+
 
 class Graphics
 {
@@ -26,6 +29,16 @@ public:
 		HRESULT hr;
 		std::string info;
 	};
+	class InfoException : public Exception
+	{
+	public:
+		InfoException(int line, const char* file, std::vector<std::string> infoMsgs) noexcept;
+		const char* what() const noexcept override;
+		const char* GetType() const noexcept override;
+		std::string GetErrorInfo() const noexcept;
+	private:
+		std::string info;
+	};
 	class DeviceRemovedException : public  HrException
 	{
 	public:
@@ -39,15 +52,19 @@ public:
 	Graphics& operator=(Graphics&) = delete;
 	void EndFrame();
 	void ClearBuffer(float r, float g, float b) noexcept;
+	void DrawTriangle();
 	~Graphics() = default;
-private:
+
+
+	private:
 #ifndef NDEBUG
-	DXGIInfoManager infoManager;
+	DXGIInfoManager infoManager ;
 #endif
-	ID3D11Device* pDevice = nullptr;
-	IDXGISwapChain* pSwap = nullptr;
-	ID3D11DeviceContext* pContext = nullptr;
-	ID3D11RenderTargetView* pTargetView = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Device> pDevice = nullptr;
+	Microsoft::WRL::ComPtr<IDXGISwapChain> pSwap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pContext = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> pTargetView = nullptr;
+
 };
 
 

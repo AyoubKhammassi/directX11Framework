@@ -26,6 +26,7 @@ void App::DoFrame()
 {
 	const float c = sin(timer.Peek()) / 2.0f + 0.5f;
 	wnd.getGraphicsPointer().ClearBuffer(c, c, 1.0f);
+	wnd.getGraphicsPointer().DrawTriangle();
 	wnd.getGraphicsPointer().EndFrame();
 }
 

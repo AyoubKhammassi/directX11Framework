@@ -1,7 +1,10 @@
 #pragma once
-#include "Window.h"
+#include "WindowWrapper.h"
 #include <vector>
+#include <wrl.h>
+#include <dxgidebug.h>
 #include <string>
+
 class DXGIInfoManager
 {
 public:
@@ -13,6 +16,8 @@ public:
 	std::vector<std::string> GetMessages() const;
 private:
 	unsigned long long next = 0u;
-	struct IDXGIInfoQueue* pDXGIInfoQueue = nullptr;
+	Microsoft::WRL::ComPtr<IDXGIInfoQueue> pDXGIInfoQueue = nullptr;
+
+	//struct //IDXGIInfoQueue* pDXGIInfoQueue = nullptr;
 };
 

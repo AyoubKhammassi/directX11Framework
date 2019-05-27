@@ -8,6 +8,8 @@
 #include <memory>
 #include "DXException.h"
 
+class Graphics;
+
 class Window
 {
 	//exception class
@@ -53,15 +55,14 @@ private:
 		HINSTANCE hInst;
 	};
 public:
-	Window(int width, int height, const char* name) noexcept;
+	Window(int width, int height, const char* name);
 	~Window();
 	Window(const Window&) = delete;
 	Window& operator= (const Window&) = delete;
 	//settitle here if u ever need it
 
 	static std::optional<int> ProcessMessages();
-	Graphics& getGraphicsPointer();
-
+	Graphics& getGraphicsPointer() const noexcept;
 
 
 private:
@@ -72,12 +73,12 @@ private:
 	int width;
 	int height;
 	HWND hWnd; 
+	std::unique_ptr<Graphics> pGraphics;
 
 public:
 	Keyboard keyboard;
 	Mouse mouse;
-private:
-	std::unique_ptr<Graphics> pGraphics;
+
 };
 
 

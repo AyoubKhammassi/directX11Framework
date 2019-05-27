@@ -46,6 +46,9 @@ public:
 			x(parent.x), y(parent.y)
 		{}
 
+		Event& operator=(const Event&) = default;
+
+
 		bool isValid() const noexcept
 		{
 			return type != Type::Invalid;
@@ -112,8 +115,8 @@ private:
 	static constexpr unsigned int bufferSize = 16u;
 	int x;
 	int y;
-	bool leftIsPressed;
-	bool rightIsPressed;
+	bool leftIsPressed = false;
+	bool rightIsPressed = false;
 	bool isInWindow = false;
 	int wheelDeltaCarry = 0;
 	std::queue<Event> buffer;
