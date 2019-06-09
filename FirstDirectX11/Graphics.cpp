@@ -124,7 +124,6 @@ void Graphics::DrawTriangle()
 	};
 
 
-
 	wrl::ComPtr<ID3D11Buffer> pVertexBuffer;
 	D3D11_BUFFER_DESC bd = {};
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -143,15 +142,60 @@ void Graphics::DrawTriangle()
 	//bind the created vertex buffer to the pipeline
 	const UINT stride = sizeof(vertex);
 	const UINT offset = 0u;
-	pContext->IASetVertexBuffers(0u, 1u, &pVertexBuffer, &stride, &offset);
+	pContext->IASetVertexBuffers(0u, 1u, pVertexBuffer.GetAddressOf(), &stride, &offset);
 
-	wrl::ComPtr<ID3D11VertexShader> pVertexShder;
+
+	//create pixel shader 
+	wrl::ComPtr<ID3D11PixelShader> pPixelShder;
 	wrl::ComPtr<ID3DBlob> pBlob;
+	GFX_THROW_INFO(D3DReadFileToBlob(L"PixelShader.cso", &pBlob));
+	GFX_THROW_INFO(pDevice->CreatePixelShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), nullptr, &pPixelShder));
+
+	//bind pixel shader to the pipeline
+	pContext->PSSetShader(pPixelShder.Get(), nullptr, 0u);
+
+
+	//create vertex shader 
+	wrl::ComPtr<ID3D11VertexShader> pVertexShder;
 	GFX_THROW_INFO(D3DReadFileToBlob(L"VertexShader.cso", &pBlob));
 	GFX_THROW_INFO(pDevice->CreateVertexShader(pBlob->GetBufferPointer(), pBlob->GetBufferSize(), nullptr, &pVertexShder));
 
-	//bind vertex shader to thepipeline
-	pContext->VSSetShader(pVertexShder.Get(), nullptr, 0);
+	//bind vertex shader to the pipeline
+	pContext->VSSetShader(pVertexShder.Get(), nullptr, 0u);
+
+
+	//Input layout (vertex shader)
+	wrl::ComPtr<ID3D11InputLayout> pInputLayout;
+	const D3D11_INPUT_ELEMENT_DESC ied[]
+	{
+		{"POSITION",0, DXGI_FORMAT_R32G32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0}
+	};
+
+	GFX_THROW_INFO(pDevice->CreateInputLayout((ied), (UINT)std::size(ied), pBlob->GetBufferPointer(), pBlob->GetBufferSize(), &pInputLayout));
+
+	//bind vertex layout
+	pContext->IASetInputLayout(pInputLayout.Get());
+
+	//bind render targets to specify where the pixel shader is going to draw the pixels
+	pContext->OMSetRenderTargets(1u, pTargetView.GetAddressOf(), nullptr);
+
+	//set primitive topology to traingle list (groups of 3 vertoces) PS: check the doc for other topologies
+	pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+
+
+
+	//configuring the viewport
+	D3D11_VIEWPORT vp;
+	vp.Height = 800;
+	vp.Width = 600;
+	vp.MaxDepth = 1;
+	vp.MinDepth = 0;
+	vp.TopLeftX = 0;
+	vp.TopLeftY = 0;
+	pContext->RSSetViewports(1u, &vp);
+
+
 	GFX_THROW_INFO_ONLY(pContext->Draw(3u, 0u));
 }
 
