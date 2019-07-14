@@ -12,7 +12,7 @@ int App::Go()
 {
 	while (true)
 	{
-		if (const auto ecode = Window::ProcessMessages())
+		if (const auto ecode = wnd.ProcessMessages())
 		{
 			//if return optional has a value, it means that the message is WM_QUIT
 			return *ecode;

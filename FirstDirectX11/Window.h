@@ -6,7 +6,6 @@
 #include "Graphics.h"
 #include <optional>
 #include <memory>
-#include "DXException.h"
 
 class Graphics;
 
