@@ -52,7 +52,7 @@ public:
 	Graphics& operator=(Graphics&) = delete;
 	void EndFrame();
 	void ClearBuffer(float r, float g, float b) noexcept;
-	void DrawTriangle();
+	void DrawTriangle(float angle, float x, float y);
 	~Graphics() = default;
 
 

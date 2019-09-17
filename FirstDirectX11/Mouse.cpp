@@ -17,6 +17,16 @@ int Mouse::GetPosY() const noexcept
 	return y;
 }
 
+int Mouse::GetNormalizedPosX(float width) const noexcept
+{
+	return ((GetPosX() / width)*2 - 1.0);
+}
+
+int Mouse::GetNormalizedPosY(float height) const noexcept
+{
+	return ((GetPosY() / height)*2 - 1.0);
+}
+
 bool Mouse::IsInWindow() const noexcept
 {
 	return isInWindow;

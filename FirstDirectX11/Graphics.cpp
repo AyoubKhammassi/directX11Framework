@@ -106,36 +106,44 @@ void Graphics::ClearBuffer(float r, float g, float b) noexcept
 
 }
 
-void Graphics::DrawTriangle()
+void Graphics::DrawTriangle(float angle, float x, float y)
 {
-	namespace wrl = Microsoft::WRL;
+	//hr that the GFX_THROW_FAILED MACRO uses must be defined in the local scope
 	HRESULT hr;
 
-
+#pragma region Vertex buffer
 	struct vertex {
-		float x;
-		float y;
+		struct
+		{
+			float x;
+			float y;
+			float z;
+		}pos;
 
-		float r;
-		float g;
-		float b;
-		float a;
+		struct
+		{
+			unsigned char r;
+			unsigned char g;
+			unsigned char b;
+			unsigned char a;
+		};
+
 	};
-
-
 	//CRETAE the vertices and the vertex buffer
 	const vertex vertices[] =
 	{
-		{0.0f, 0.5f,1.0f,0.0f,0.0f,0},
-		{ 0.5f, -0.5f,0.0f,1.0f,0.0f,0},
-		{-0.5f, -0.5f,0.0f,0.0f,1.0f,0}
-	};
+		//Back face
+		{-1.0f,-1.0f,-1.0f ,255,0,0,255},
+		{1.0f,-1.0f,-1.0f, 0,255,0,255},
+		{-1.0f,1.0f,-1.0f, 0,0,255,255},
+		{1.0f,1.0f,-1.0f, 255,255,0,255},
 
-	const int indices[]
-	{
-		0,1,2,0
+		//Front Face
+		{-1.0f,-1.0f,1.0f ,255,0,255,255},
+		{1.0f,-1.0f,1.0f, 0,255,255,255},
+		{-1.0f,1.0f,1.0f, 0,0,0,255},
+		{1.0f,1.0f,1.0f, 255,255,255,255},
 	};
-
 
 	//creating the vertex buffer
 	wrl::ComPtr<ID3D11Buffer> pVertexBuffer;
@@ -157,7 +165,18 @@ void Graphics::DrawTriangle()
 	const UINT stride = sizeof(vertex);
 	const UINT offset = 0u;
 	pContext->IASetVertexBuffers(0u, 1u, pVertexBuffer.GetAddressOf(), &stride, &offset);
+#pragma endregion
 
+#pragma region Index Buffer
+	const unsigned short indices[]
+	{
+		1,2,0, 1,2,3,
+		1,3,5, 3,7,5,
+		2,6,3, 3,6,7,
+		4,5,7, 4,7,6,
+		0,4,2, 2,4,6,
+		0,1,4, 1,5,4
+	};
 	//creating the index buffer
 	wrl::ComPtr<ID3D11Buffer> pIndexBuffer;
 	D3D11_BUFFER_DESC ibd = {};
@@ -165,9 +184,8 @@ void Graphics::DrawTriangle()
 	ibd.ByteWidth = sizeof(indices);
 	ibd.CPUAccessFlags = 0u;
 	ibd.MiscFlags = 0u;
-	ibd.StructureByteStride = sizeof(UINT);
+	ibd.StructureByteStride = sizeof(unsigned short);
 	ibd.Usage = D3D11_USAGE_DEFAULT;
-
 
 	D3D11_SUBRESOURCE_DATA isd = {};
 	isd.pSysMem = indices;
@@ -175,24 +193,33 @@ void Graphics::DrawTriangle()
 	GFX_THROW_INFO(pDevice->CreateBuffer(&ibd, &isd, &pIndexBuffer));
 
 	//bind the created index buffer to the pipeline
-	pContext->IASetIndexBuffer(pIndexBuffer.Get(),DXGI_FORMAT_R32_UINT, 0u);
+	pContext->IASetIndexBuffer(pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0u);
+#pragma endregion
 
+#pragma region Constant Buffer
 	//Create constant buffer
 	struct ConstantBuffer
 	{
-		dx::CXMMATRIX transform;
+		/*struct
+		{
+			float element[4][4];
+		} transformation;*/
+		dx::XMMATRIX transform;
 	};
-
-
 	const ConstantBuffer cb =
 	{
-		{
-			dx::XMMatrixTranspose(dx::XMMatrixRotationZ(60)*dx::XMMatrixScaling(3.0f / 4.0f,1.0f,1.0f))
-		}
+		/*{
+			std::cos(angle), std::sin(angle), 0.0f,0.0f,
+			-std::sin(angle),std::cos(angle),0.0f,0.0f,
+			0.0f,			0.0f,			1.0f,0.0f,
+			0.0f,			0.0f,			0.0f,1.0f,
+		}*/
+		dx::XMMatrixTranspose(
+			dx::XMMatrixRotationZ(angle)*
+			dx::XMMatrixRotationX(angle) *
+			dx::XMMatrixTranslation(x,y,4.0f) *
+			dx::XMMatrixPerspectiveLH(1.0f, 3.0f / 4.0f,0.5f,10.0f))
 	};
-
-
-
 	//creating the constant buffer
 	wrl::ComPtr<ID3D11Buffer> pConstBuffer;
 	D3D11_BUFFER_DESC cbd;
@@ -202,7 +229,7 @@ void Graphics::DrawTriangle()
 	cbd.MiscFlags = 0u;
 	cbd.StructureByteStride = 0u;
 	cbd.Usage = D3D11_USAGE_DYNAMIC;
-
+	//NOTE: this a dynamic resource, it will be updated by the CPU each frame, so the CPU access flag need to be set to write
 
 	D3D11_SUBRESOURCE_DATA csd = {};
 	csd.pSysMem = &cb;
@@ -210,10 +237,10 @@ void Graphics::DrawTriangle()
 	GFX_THROW_INFO(pDevice->CreateBuffer(&cbd, &csd, &pConstBuffer));
 	//pDevice->CreateBuffer(&cbd, &csd, &pConstBuffer);
 	//bind the created constant buffer to the pipeline
-	pContext->VSSetConstantBuffers(0u,1u, pConstBuffer.GetAddressOf());
+	pContext->VSSetConstantBuffers(0u, 1u, pConstBuffer.GetAddressOf());
+#pragma endregion
 
-
-
+#pragma region Pixel Shader
 	//create pixel shader 
 	wrl::ComPtr<ID3D11PixelShader> pPixelShder;
 	wrl::ComPtr<ID3DBlob> pBlob;
@@ -222,8 +249,9 @@ void Graphics::DrawTriangle()
 
 	//bind pixel shader to the pipeline
 	pContext->PSSetShader(pPixelShder.Get(), nullptr, 0u);
+#pragma endregion
 
-
+#pragma region Vertex Shader
 	//create vertex shader 
 	wrl::ComPtr<ID3D11VertexShader> pVertexShder;
 	GFX_THROW_INFO(D3DReadFileToBlob(L"VertexShader.cso", &pBlob));
@@ -231,14 +259,14 @@ void Graphics::DrawTriangle()
 
 	//bind vertex shader to the pipeline
 	pContext->VSSetShader(pVertexShder.Get(), nullptr, 0u);
-
+#pragma endregion
 
 	//Input layout (vertex shader)
 	wrl::ComPtr<ID3D11InputLayout> pInputLayout;
 	const D3D11_INPUT_ELEMENT_DESC ied[]
 	{
-		{"POSITION",0, DXGI_FORMAT_R32G32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
-		{"COLOR",0, DXGI_FORMAT_R32G32B32_FLOAT,0,8,D3D11_INPUT_PER_VERTEX_DATA,0}
+		{"POSITION",0, DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
+		{"COLOR",0, DXGI_FORMAT_R8G8B8A8_UNORM,0,12u,D3D11_INPUT_PER_VERTEX_DATA,0}
 	};
 
 	GFX_THROW_INFO(pDevice->CreateInputLayout((ied), (UINT)std::size(ied), pBlob->GetBufferPointer(), pBlob->GetBufferSize(), &pInputLayout));
@@ -252,9 +280,6 @@ void Graphics::DrawTriangle()
 	//set primitive topology to traingle list (groups of 3 vertoces) PS: check the doc for other topologies
 	pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-
-
-
 	//configuring the viewport
 	D3D11_VIEWPORT vp;
 	vp.Height = 600;
@@ -264,7 +289,6 @@ void Graphics::DrawTriangle()
 	vp.TopLeftX = 0;
 	vp.TopLeftY = 0;
 	pContext->RSSetViewports(1u, &vp);
-
 
 	GFX_THROW_INFO_ONLY(pContext->DrawIndexed(3u,0u,0u));
 }

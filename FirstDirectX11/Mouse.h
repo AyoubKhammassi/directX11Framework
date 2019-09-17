@@ -89,6 +89,9 @@ public:
 	std::pair<int, int> GetPos() const noexcept;
 	int GetPosX() const noexcept;
 	int GetPosY() const noexcept;
+	//Normalized Coordinates
+	int GetNormalizedPosX(float width) const noexcept;
+	int GetNormalizedPosY(float height) const noexcept;
 	bool IsInWindow() const noexcept;
 	bool LeftIsPressed() const noexcept;
 	bool RightIsPressed() const noexcept;

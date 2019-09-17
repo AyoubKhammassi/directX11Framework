@@ -6,14 +6,16 @@ struct VSOut
 
 cbuffer cbuf
 {
+	//we can declate matrices as row major because that's how are handled in the CPU, but matrices calculations are column major on the GPU so it's better to transpose the
+	//matrices before sending it to the shader           KEY WORD: row_major
 	matrix transform;
 }
 
 
-VSOut	main(float4 pos : POSITION, float3 color : COLOR)
+VSOut	main(float3 pos : POSITION, float4 color : COLOR)
 {
 	VSOut o;
-	o.pos = mul(float4(pos.x, pos.y, 0.0f, 1.0f), transform);
-	o.color = float4(color, 1.0f);
+	o.pos = mul(float4(pos, 1.0f), transform);
+	o.color = color;
 	return o;
 }
