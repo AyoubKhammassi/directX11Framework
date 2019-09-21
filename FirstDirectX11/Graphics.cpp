@@ -78,6 +78,47 @@ Graphics::Graphics(HWND hWnd)
 	GFX_THROW_INFO(pDevice->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &pTargetView));
 	//GFX_THROW_INFO(pBackBuffer->Release());
 
+#pragma region Depth and Stencil Buffer
+	//CREATE DEPTH STENCIL STATE
+	//Fill the description structure
+	D3D11_DEPTH_STENCIL_DESC dsDesc = {};
+	dsDesc.DepthEnable = true;
+	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;//the smaller the value, the more near it is to the screen
+	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL; //Mask everything
+
+	//Fill the pointer
+	wrl::ComPtr<ID3D11DepthStencilState> pDSState;
+	GFX_THROW_INFO(pDevice->CreateDepthStencilState(&dsDesc, &pDSState));
+
+	//Binding the depth stencil state to the output merger state
+	pContext->OMSetDepthStencilState(pDSState.Get(), 1u);
+
+	//CREATE THE DEPTH BUFFER TEXTURE
+	wrl::ComPtr<ID3D11Texture2D> pDepthStencil;
+	D3D11_TEXTURE2D_DESC descDepth = {};
+	descDepth.Width = 800u;
+	descDepth.Height = 600u;
+	descDepth.MipLevels = 1u;
+	descDepth.ArraySize = 1u; //You can have an array of textures in one texture resource
+	descDepth.Format = DXGI_FORMAT_D32_FLOAT; //32bit depth floating point values in each pixel
+	descDepth.SampleDesc.Count = 1u;
+	descDepth.SampleDesc.Quality = 0u;
+	descDepth.Usage = D3D11_USAGE_DEFAULT;
+	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+	GFX_THROW_INFO(pDevice->CreateTexture2D(&descDepth,nullptr,&pDepthStencil));
+
+	//CREATE THE VIEW FOR THE DEPTH STENCIL TEXTURE
+	D3D11_DEPTH_STENCIL_VIEW_DESC descDSV = {};
+	descDSV.Format = DXGI_FORMAT_D32_FLOAT;
+	descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	descDSV.Texture2D.MipSlice = 0u;
+	GFX_THROW_INFO(pDevice->CreateDepthStencilView(pDepthStencil.Get(), &descDSV, &pDepthStencilView));
+
+	//BIND DEPTH STENCIL VIEW TO THE OUTPUT MERGER STAGE
+	pContext->OMSetRenderTargets(1u,pTargetView.GetAddressOf(),pDepthStencilView.Get());
+
+#pragma endregion
 }
 
 void Graphics::EndFrame()
@@ -103,6 +144,8 @@ void Graphics::ClearBuffer(float r, float g, float b) noexcept
 {
 	const float color[] = { r,g,b,1.0f };
 	pContext->ClearRenderTargetView(pTargetView.Get(), color);
+	pContext->ClearDepthStencilView(pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0u);
+
 
 }
 
@@ -119,30 +162,21 @@ void Graphics::DrawTriangle(float angle, float x, float y)
 			float y;
 			float z;
 		}pos;
-
-		struct
-		{
-			unsigned char r;
-			unsigned char g;
-			unsigned char b;
-			unsigned char a;
-		};
-
 	};
 	//CRETAE the vertices and the vertex buffer
 	const vertex vertices[] =
 	{
 		//Back face
-		{-1.0f,-1.0f,-1.0f ,255,0,0,255},
-		{1.0f,-1.0f,-1.0f, 0,255,0,255},
-		{-1.0f,1.0f,-1.0f, 0,0,255,255},
-		{1.0f,1.0f,-1.0f, 255,255,0,255},
+		{-1.0f,-1.0f,-1.0f},
+		{1.0f,-1.0f,-1.0f},
+		{-1.0f,1.0f,-1.0f},
+		{1.0f,1.0f,-1.0f},
 
 		//Front Face
-		{-1.0f,-1.0f,1.0f ,255,0,255,255},
-		{1.0f,-1.0f,1.0f, 0,255,255,255},
-		{-1.0f,1.0f,1.0f, 0,0,0,255},
-		{1.0f,1.0f,1.0f, 255,255,255,255},
+		{-1.0f,-1.0f,1.0f},
+		{1.0f,-1.0f,1.0f},
+		{-1.0f,1.0f,1.0f},
+		{1.0f,1.0f,1.0f},
 	};
 
 	//creating the vertex buffer
@@ -170,12 +204,14 @@ void Graphics::DrawTriangle(float angle, float x, float y)
 #pragma region Index Buffer
 	const unsigned short indices[]
 	{
-		1,2,0, 1,2,3,
+
+		0,2,1, 2,3,1,
 		1,3,5, 3,7,5,
 		2,6,3, 3,6,7,
 		4,5,7, 4,7,6,
 		0,4,2, 2,4,6,
 		0,1,4, 1,5,4
+
 	};
 	//creating the index buffer
 	wrl::ComPtr<ID3D11Buffer> pIndexBuffer;
@@ -196,7 +232,7 @@ void Graphics::DrawTriangle(float angle, float x, float y)
 	pContext->IASetIndexBuffer(pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0u);
 #pragma endregion
 
-#pragma region Constant Buffer
+#pragma region Transform Constant Buffer 
 	//Create constant buffer
 	struct ConstantBuffer
 	{
@@ -240,6 +276,51 @@ void Graphics::DrawTriangle(float angle, float x, float y)
 	pContext->VSSetConstantBuffers(0u, 1u, pConstBuffer.GetAddressOf());
 #pragma endregion
 
+#pragma region Color Constant Buffer
+
+	struct ConstantBuffer2
+	{
+		struct
+		{
+			float r;
+			float g;
+			float b;
+			float a;
+		}face_colors[6];
+	};
+
+	const ConstantBuffer2 cb2
+	{
+		{
+			{1.0f,0.0f,1.0f},
+			{1.0f,0.0f,0.0f},
+			{0.0f,1.0f,0.0f},
+			{0.0f,0.0f,1.0f},
+			{1.0f,1.0f,0.0f},
+			{0.0f,1.0f,1.0f},
+		}
+	};
+
+	//creating the constant buffer
+	wrl::ComPtr<ID3D11Buffer> pConstBuffer2;
+	D3D11_BUFFER_DESC cbd2;
+	cbd2.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbd2.ByteWidth = sizeof(cb2);
+	cbd2.CPUAccessFlags = 0u;
+	cbd2.MiscFlags = 0u;
+	cbd2.StructureByteStride = 0u;
+	cbd2.Usage = D3D11_USAGE_DEFAULT;
+
+	D3D11_SUBRESOURCE_DATA csd2 = {};
+	csd2.pSysMem = &cb2;
+
+	GFX_THROW_INFO(pDevice->CreateBuffer(&cbd2, &csd2, &pConstBuffer2));
+	//pDevice->CreateBuffer(&cbd2, &csd, &pConstBuffer);
+	//bind the created constant buffer to the pipeline
+	pContext->PSSetConstantBuffers(0u, 1u, pConstBuffer2.GetAddressOf());
+#pragma endregion
+
+
 #pragma region Pixel Shader
 	//create pixel shader 
 	wrl::ComPtr<ID3D11PixelShader> pPixelShder;
@@ -266,16 +347,13 @@ void Graphics::DrawTriangle(float angle, float x, float y)
 	const D3D11_INPUT_ELEMENT_DESC ied[]
 	{
 		{"POSITION",0, DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
-		{"COLOR",0, DXGI_FORMAT_R8G8B8A8_UNORM,0,12u,D3D11_INPUT_PER_VERTEX_DATA,0}
+		//{"COLOR",0, DXGI_FORMAT_R8G8B8A8_UNORM,0,12u,D3D11_INPUT_PER_VERTEX_DATA,0}
 	};
 
 	GFX_THROW_INFO(pDevice->CreateInputLayout((ied), (UINT)std::size(ied), pBlob->GetBufferPointer(), pBlob->GetBufferSize(), &pInputLayout));
 
 	//bind vertex layout
 	pContext->IASetInputLayout(pInputLayout.Get());
-
-	//bind render targets to specify where the pixel shader is going to draw the pixels
-	pContext->OMSetRenderTargets(1u, pTargetView.GetAddressOf(), nullptr);
 
 	//set primitive topology to traingle list (groups of 3 vertoces) PS: check the doc for other topologies
 	pContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -290,7 +368,7 @@ void Graphics::DrawTriangle(float angle, float x, float y)
 	vp.TopLeftY = 0;
 	pContext->RSSetViewports(1u, &vp);
 
-	GFX_THROW_INFO_ONLY(pContext->DrawIndexed(3u,0u,0u));
+	GFX_THROW_INFO_ONLY(pContext->DrawIndexed(36u,0u,0u));
 }
 
 /*Graphics::~Graphics()

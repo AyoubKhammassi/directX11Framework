@@ -64,6 +64,7 @@ public:
 	Microsoft::WRL::ComPtr<IDXGISwapChain> pSwap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11DeviceContext> pContext = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> pTargetView = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> pDepthStencilView = nullptr; //The actual view of the depth texture
 
 };
 

@@ -1,8 +1,8 @@
-struct VSOut
+/*struct VSOut
 {
 	float4 color: COLOR;
 	float4 pos: SV_POSITION;
-};
+};*/
 
 cbuffer cbuf
 {
@@ -12,10 +12,8 @@ cbuffer cbuf
 }
 
 
-VSOut	main(float3 pos : POSITION, float4 color : COLOR)
+float4	main(float3 pos : POSITION) : SV_Position
 {
-	VSOut o;
-	o.pos = mul(float4(pos, 1.0f), transform);
-	o.color = color;
-	return o;
+	return mul(float4(pos, 1.0f), transform);
+
 }
